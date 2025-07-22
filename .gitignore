@@ -72,4 +72,10 @@ test-results.xml
 *.sqlite
 
 # Cache
-.ca
+.cache/
+.parcel-cache/
+.turbo/
+
+# Misc
+*.tgz
+*.tar.gz
