@@ -7,9 +7,10 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "npm run dev --workspace=frontend",
+    "dev": "echo 'Choose: npm run dev:frontend OR npm run dev:backend'",
     "dev:frontend": "npm run dev --workspace=frontend",
-    "build": "npm run build --workspace=frontend",
+    "dev:backend": "npm run dev --workspace=backend",
+    "build": "npm run build --workspace=frontend && npm run build --workspace=backend",
     "test": "echo 'Tests coming soon!'"
   },
   "devDependencies": {
