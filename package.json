@@ -3,9 +3,13 @@
   "version": "0.1.0",
   "description": "AI-powered technical documentation assistant with RAG capabilities",
   "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
-    "dev": "echo 'Development environment coming soon!'",
-    "build": "echo 'Build process coming soon!'",
+    "dev": "npm run dev --workspace=frontend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "build": "npm run build --workspace=frontend",
     "test": "echo 'Tests coming soon!'"
   },
   "devDependencies": {
