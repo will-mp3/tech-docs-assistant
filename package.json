@@ -10,6 +10,9 @@
     "dev": "echo 'Choose: npm run dev:frontend OR npm run dev:backend'",
     "dev:frontend": "npm run dev --workspace=frontend",
     "dev:backend": "npm run dev --workspace=backend",
+    "dev:services": "docker-compose -f docker/docker-compose.yml up -d",
+    "stop:services": "docker-compose -f docker/docker-compose.yml down",
+    "reset:services": "docker-compose -f docker/docker-compose.yml down -v && npm run dev:services",
     "build": "npm run build --workspace=frontend && npm run build --workspace=backend",
     "test": "echo 'Tests coming soon!'"
   },
@@ -21,7 +24,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/tech-docs-assistant.git"
+    "url": "https://github.com/will-mp3/tech-docs-assistant.git"
   },
   "keywords": ["rag", "ai", "documentation", "aws", "react"],
   "author": "Your Name",
