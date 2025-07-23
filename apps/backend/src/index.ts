@@ -3,9 +3,9 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { apiRoutes } from './routes';
 import { opensearchService } from './services/opensearch';
-import { EmbeddingService } from './services/embeddings'; // ← This import
+import { EmbeddingService } from './services/embeddings';
 
-// Load environment variables
+// Load environment variables FIRST
 dotenv.config();
 
 const app = express();
