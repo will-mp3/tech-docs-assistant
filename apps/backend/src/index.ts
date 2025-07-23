@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { apiRoutes } from './routes';
 import { opensearchService } from './services/opensearch';
+import { EmbeddingService } from './services/embeddings'; // ← This import
 
 // Load environment variables
 dotenv.config();
@@ -29,18 +30,25 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Initialize OpenSearch and start server
+// Initialize services and start server
 async function startServer() {
   try {
+    // Initialize embedding service (loads AI model) ← This should be here
+    console.log('Initializing embedding service...');
+    await EmbeddingService.initialize();
+    
     // Ensure OpenSearch index exists
+    console.log('Setting up OpenSearch...');
     await opensearchService.ensureIndex();
-    console.log('OpenSearch initialized successfully');
+    
+    console.log('All services initialized successfully');
     
     // Start server
     app.listen(PORT, () => {
       console.log(`Backend server running on http://localhost:${PORT}`);
       console.log(`Health check: http://localhost:${PORT}/health`);
       console.log(`API endpoints: http://localhost:${PORT}/api`);
+      console.log('Vector embeddings enabled for semantic search');
     });
   } catch (error) {
     console.error('Failed to start server:', error);
