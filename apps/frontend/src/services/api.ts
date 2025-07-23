@@ -14,6 +14,7 @@ export interface SearchResult {
   title: string;
   content: string;
   source: string;
+  technology: string;
   score: number;
 }
 
@@ -23,10 +24,14 @@ export interface SearchResponse {
   totalResults: number;
 }
 
+// Updated to match what backend actually returns
 export interface Document {
   id: string;
   title: string;
+  content: string;
+  source: string;
   technology: string;
+  timestamp: string;
 }
 
 export interface DocumentsResponse {
@@ -37,6 +42,14 @@ export interface DocumentsResponse {
 export interface TestResponse {
   message: string;
   timestamp: string;
+}
+
+// For creating new documents
+export interface NewDocument {
+  title: string;
+  content: string;
+  source: string;
+  technology: string;
 }
 
 export const apiService = {
@@ -57,4 +70,10 @@ export const apiService = {
     const response = await api.get<DocumentsResponse>('/documents');
     return response.data;
   },
+
+  // Add new document - NOW WITH PROPER TYPING
+  addDocument: async (document: NewDocument): Promise<{ message: string; document: Document }> => {
+    const response = await api.post<{ message: string; document: Document }>('/documents', document);
+    return response.data;
+  }
 };
