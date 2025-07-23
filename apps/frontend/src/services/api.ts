@@ -24,7 +24,6 @@ export interface SearchResponse {
   totalResults: number;
 }
 
-// Updated to match what backend actually returns
 export interface Document {
   id: string;
   title: string;
@@ -44,12 +43,26 @@ export interface TestResponse {
   timestamp: string;
 }
 
-// For creating new documents
 export interface NewDocument {
   title: string;
   content: string;
   source: string;
   technology: string;
+}
+
+// NEW: RAG Q&A interfaces
+export interface Source {
+  title: string;
+  source: string;
+  relevance: number;
+}
+
+export interface RAGResponse {
+  question: string;
+  answer: string;
+  reasoning: string;
+  sources: Source[];
+  totalSources: number;
 }
 
 export const apiService = {
@@ -71,9 +84,15 @@ export const apiService = {
     return response.data;
   },
 
-  // Add new document - NOW WITH PROPER TYPING
+  // Add new document
   addDocument: async (document: NewDocument): Promise<{ message: string; document: Document }> => {
     const response = await api.post<{ message: string; document: Document }>('/documents', document);
+    return response.data;
+  },
+
+  // NEW: Ask AI question with RAG
+  askQuestion: async (question: string): Promise<RAGResponse> => {
+    const response = await api.post<RAGResponse>('/ask', { question });
     return response.data;
   }
 };

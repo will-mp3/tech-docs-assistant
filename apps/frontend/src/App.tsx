@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SearchBox } from './components/SearchBox';
 import { SearchResults } from './components/SearchResults';
 import { DocumentUpload } from './components/DocumentUpload';
+import { AIAssistant } from './components/AIAssistant';
 import { apiService, type SearchResult } from './services/api';
 import './App.css';
 
@@ -25,7 +26,6 @@ function App() {
   }, []);
 
   const handleDocumentAdded = () => {
-    // Refresh connection status and clear search results
     testConnection();
     setSearchResults([]);
   };
@@ -37,7 +37,7 @@ function App() {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif'
     }}>
       <div style={{
-        maxWidth: '800px',
+        maxWidth: '900px',
         margin: '0 auto',
         padding: '2rem'
       }}>
@@ -58,7 +58,7 @@ function App() {
             color: '#6b7280',
             marginBottom: '1rem'
           }}>
-            AI-powered search for technical documentation
+            AI-powered search and Q&A for technical documentation
           </p>
           <div style={{
             display: 'flex',
@@ -81,19 +81,41 @@ function App() {
         <main style={{
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center'
+          alignItems: 'center',
+          gap: '2rem'
         }}>
           <DocumentUpload onDocumentAdded={handleDocumentAdded} />
           
-          <SearchBox 
-            onResults={setSearchResults} 
-            onLoading={setLoading} 
-          />
+          <AIAssistant />
           
-          <SearchResults 
-            results={searchResults} 
-            loading={loading} 
-          />
+          <div style={{
+            width: '100%',
+            height: '1px',
+            backgroundColor: '#e5e7eb',
+            margin: '1rem 0'
+          }}></div>
+          
+          <div style={{ width: '100%', maxWidth: '800px' }}>
+            <h3 style={{
+              fontSize: '1.25rem',
+              fontWeight: '500',
+              color: '#111827',
+              marginBottom: '1rem',
+              textAlign: 'center'
+            }}>
+              Or search documents directly:
+            </h3>
+            
+            <SearchBox 
+              onResults={setSearchResults} 
+              onLoading={setLoading} 
+            />
+            
+            <SearchResults 
+              results={searchResults} 
+              loading={loading} 
+            />
+          </div>
         </main>
       </div>
     </div>
