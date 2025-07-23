@@ -1,10 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
 
-// Initialize Anthropic client
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
 export interface ClaudeResponse {
   answer: string;
   reasoning: string;
@@ -25,6 +20,10 @@ export const claudeService = {
   async generateRAGResponse(context: RAGContext): Promise<ClaudeResponse> {
     const { query, documents } = context;
     
+    // DEBUG: Check if API key is loaded
+    console.log('API Key status:', process.env.ANTHROPIC_API_KEY ? 'LOADED' : 'MISSING');
+    console.log('API Key length:', process.env.ANTHROPIC_API_KEY?.length || 0);
+    
     if (!process.env.ANTHROPIC_API_KEY) {
       console.warn('No Claude API key found, using mock response');
       return this.generateMockResponse(context);
@@ -38,6 +37,11 @@ export const claudeService = {
     }
 
     try {
+      // Initialize Anthropic client HERE, after env vars are loaded
+      const anthropic = new Anthropic({
+        apiKey: process.env.ANTHROPIC_API_KEY,
+      });
+
       // Prepare context from retrieved documents
       const contextText = documents.map((doc, index) => 
         `Document ${index + 1}: "${doc.title}" (Relevance: ${Math.round(doc.score * 100)}%)
@@ -63,11 +67,13 @@ ${contextText}`;
 
       const userPrompt = `Based on the documents provided, please answer this question: ${query}`;
 
+      console.log('Calling Claude API...');
+
       // Call Claude API
       const response = await anthropic.messages.create({
         model: process.env.CLAUDE_MODEL || 'claude-3-haiku-20240307',
         max_tokens: 1000,
-        temperature: 0.3, // Lower temperature for more factual responses
+        temperature: 0.3,
         system: systemPrompt,
         messages: [
           {
