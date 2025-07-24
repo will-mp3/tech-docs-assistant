@@ -64,6 +64,12 @@ export interface RAGResponse {
   totalSources: number;
 }
 
+export interface ScrapeUrlRequest {
+  url: string;
+  technology: string;
+  source: string;
+}
+
 export const apiService = {
   // Test API connection
   test: async (): Promise<TestResponse> => {
@@ -92,6 +98,11 @@ export const apiService = {
   // NEW: Ask AI question with RAG
   askQuestion: async (question: string): Promise<RAGResponse> => {
     const response = await api.post<RAGResponse>('/ask', { question });
+    return response.data;
+  },
+
+  scrapeUrl: async (request: ScrapeUrlRequest): Promise<{ message: string; document: any }> => {
+    const response = await api.post<{ message: string; document: any }>('/documents/scrape', request);
     return response.data;
   }
 };
