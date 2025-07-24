@@ -80,18 +80,29 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, loading }
             }}>
               {result.content}
             </p>
-            <a 
-              href={result.source} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              style={{
-                color: '#3b82f6',
-                textDecoration: 'none',
+            {result.source.startsWith('http') ? (
+              <a 
+                href={result.source} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{
+                  color: '#3b82f6',
+                  textDecoration: 'none',
+                  fontSize: '0.875rem'
+                }}
+                onMouseEnter={(e) => (e.target as HTMLAnchorElement).style.textDecoration = 'underline'}
+                onMouseLeave={(e) => (e.target as HTMLAnchorElement).style.textDecoration = 'none'}
+              >
+                {result.source}
+              </a>
+            ) : (
+              <span style={{
+                color: '#6b7280',
                 fontSize: '0.875rem'
-              }}
-            >
-              Source: {result.source}
-            </a>
+              }}>
+                {result.source}
+              </span>
+            )}
           </div>
         ))}
       </div>

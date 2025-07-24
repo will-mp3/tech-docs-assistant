@@ -111,6 +111,75 @@ export const opensearchService = {
   // Manual hybrid search: combines keyword and vector search
   async searchDocuments(query: string, size: number = 10): Promise<SearchResult[]> {
     try {
+      // Helper function for generating excerpts
+      const generateExcerpt = (content: string, searchQuery: string, maxLength: number = 300): string => {
+        if (!content) return '';
+        
+        // Strip HTML tags first - INCLUDING the <mark> tags
+        const cleanContent = content.replace(/<[^>]*>/g, '');
+        
+        if (cleanContent.length <= maxLength) {
+          return cleanContent;
+        }
+
+        const queryWords = searchQuery.toLowerCase().split(/\s+/);
+        const contentLower = cleanContent.toLowerCase();
+        
+        let bestPosition = 0;
+        let maxMatches = 0;
+        
+        for (let i = 0; i < cleanContent.length - maxLength; i += 50) {
+          const section = contentLower.substring(i, i + maxLength);
+          const matches = queryWords.filter(word => section.includes(word)).length;
+          
+          if (matches > maxMatches) {
+            maxMatches = matches;
+            bestPosition = i;
+          }
+        }
+
+        let excerpt = cleanContent.substring(bestPosition, bestPosition + maxLength);
+        
+        const lastPeriod = excerpt.lastIndexOf('.');
+        if (lastPeriod > maxLength * 0.7) {
+          excerpt = excerpt.substring(0, lastPeriod + 1);
+        }
+
+        const prefix = bestPosition > 0 ? '...' : '';
+        const suffix = bestPosition + excerpt.length < content.length ? '...' : '';
+        
+        return prefix + excerpt.trim() + suffix;
+      };
+
+      // Helper function for generating excerpts from highlights
+      const generateExcerptFromHighlights = (highlights: any, fullContent: string, searchQuery: string): string => {
+        if (highlights?.content) {
+          // Join highlights and strip HTML tags including <mark>
+          const highlightedText = highlights.content.join(' ... ');
+          return highlightedText.replace(/<[^>]*>/g, '');
+        }
+        
+        return generateExcerpt(fullContent || '', searchQuery);
+      };
+
+      // Helper function for formatting sources
+      const formatSource = (sourceData: any): string => {
+        if (!sourceData) return 'Unknown source';
+        
+        const source = sourceData.source || 'Unknown source';
+        const metadata = sourceData.metadata;
+        
+        if (metadata?.url) {
+          return metadata.url;
+        }
+        
+        if (metadata?.originalName) {
+          return `${source} (${metadata.originalName})`;
+        }
+        
+        return source;
+      };
+
       // Generate embedding for the search query
       const queryEmbedding = await EmbeddingService.generateEmbedding(query);
       
@@ -120,11 +189,11 @@ export const opensearchService = {
         body: {
           query: { match_all: {} },
           size: 100,
-          _source: ['title', 'content', 'source', 'technology', 'embedding']
+          _source: ['title', 'content', 'source', 'technology', 'embedding', 'metadata']
         }
       });
 
-      // Step 2: Keyword search
+      // Step 2: Keyword search with highlighting
       const keywordResponse = await opensearchClient.search({
         index: 'documents',
         body: {
@@ -136,6 +205,17 @@ export const opensearchService = {
               fuzziness: 'AUTO'
             }
           },
+          highlight: {
+            fields: {
+              title: {},
+              content: {
+                fragment_size: 150,
+                number_of_fragments: 2,
+                pre_tags: ["<mark>"],
+                post_tags: ["</mark>"]
+              }
+            }
+          },
           size: size * 2
         }
       });
@@ -144,7 +224,6 @@ export const opensearchService = {
       const vectorResults: Array<{ doc: SearchResult; similarity: number }> = [];
       
       for (const hit of allDocsResponse.body.hits.hits) {
-        // Type-safe access to _source
         if (hit._source && hit._source.embedding) {
           const similarity = EmbeddingService.cosineSimilarity(
             queryEmbedding,
@@ -155,8 +234,8 @@ export const opensearchService = {
             doc: {
               id: hit._id,
               title: hit._source.title || '',
-              content: hit._source.content || '',
-              source: hit._source.source || '',
+              content: generateExcerpt(hit._source.content || '', query),
+              source: formatSource(hit._source),
               technology: hit._source.technology || '',
               score: similarity
             },
@@ -168,12 +247,12 @@ export const opensearchService = {
       // Step 4: Sort vector results by similarity
       vectorResults.sort((a, b) => b.similarity - a.similarity);
 
-      // Step 5: Process keyword results
+      // Step 5: Process keyword results with excerpts
       const keywordResults = keywordResponse.body.hits.hits.map((hit: any) => ({
         id: hit._id,
         title: hit._source?.title || '',
-        content: hit._source?.content || '',
-        source: hit._source?.source || '',
+        content: generateExcerptFromHighlights(hit.highlight, hit._source?.content, query),
+        source: formatSource(hit._source),
         technology: hit._source?.technology || '',
         score: hit._score / 10
       }));
@@ -194,6 +273,10 @@ export const opensearchService = {
         if (combinedResults.has(result.id)) {
           const existing = combinedResults.get(result.id)!;
           existing.score = Math.min(existing.score + (result.score * 0.3), 1);
+          // Use highlighted excerpt if available
+          if (result.content.includes('<mark>')) {
+            existing.content = result.content;
+          }
         } else {
           combinedResults.set(result.id, {
             ...result,
@@ -219,37 +302,97 @@ export const opensearchService = {
   },
 
   // Fallback keyword search
-  async keywordSearchOnly(query: string, size: number = 10): Promise<SearchResult[]> {
-    try {
-      const response = await opensearchClient.search({
-        index: 'documents',
-        body: {
-          query: {
-            multi_match: {
-              query: query,
-              fields: ['title^3', 'content^2', 'technology'],
-              type: 'best_fields',
-              fuzziness: 'AUTO'
-            }
-          },
-          size: size
-        }
-      });
+  // Fallback keyword search
+async keywordSearchOnly(query: string, size: number = 10): Promise<SearchResult[]> {
+  try {
+    // Helper function for generating excerpts (same as in main search)
+    const generateExcerpt = (content: string, searchQuery: string, maxLength: number = 300): string => {
+      if (!content) return '';
+      
+      // Strip HTML tags first - INCLUDING the <mark> tags
+      const cleanContent = content.replace(/<[^>]*>/g, '');
+      
+      if (cleanContent.length <= maxLength) {
+        return cleanContent;
+      }
 
-      const hits = response.body.hits.hits;
-      return hits.map((hit: any) => ({
-        id: hit._id,
-        title: hit._source?.title || '',
-        content: hit._source?.content || '',
-        source: hit._source?.source || '',
-        technology: hit._source?.technology || '',
-        score: Math.min(hit._score / 10, 1)
-      }));
-    } catch (error) {
-      console.error('Error in keyword search:', error);
-      return [];
-    }
-  },
+      const queryWords = searchQuery.toLowerCase().split(/\s+/);
+      const contentLower = cleanContent.toLowerCase();
+      
+      let bestPosition = 0;
+      let maxMatches = 0;
+      
+      for (let i = 0; i < cleanContent.length - maxLength; i += 50) {
+        const section = contentLower.substring(i, i + maxLength);
+        const matches = queryWords.filter(word => section.includes(word)).length;
+        
+        if (matches > maxMatches) {
+          maxMatches = matches;
+          bestPosition = i;
+        }
+      }
+
+      let excerpt = cleanContent.substring(bestPosition, bestPosition + maxLength);
+      
+      const lastPeriod = excerpt.lastIndexOf('.');
+      if (lastPeriod > maxLength * 0.7) {
+        excerpt = excerpt.substring(0, lastPeriod + 1);
+      }
+
+      const prefix = bestPosition > 0 ? '...' : '';
+      const suffix = bestPosition + excerpt.length < content.length ? '...' : '';
+      
+      return prefix + excerpt.trim() + suffix;
+    };
+
+    // Helper function for formatting sources (same as in main search)
+    const formatSource = (sourceData: any): string => {
+      if (!sourceData) return 'Unknown source';
+      
+      const source = sourceData.source || 'Unknown source';
+      const metadata = sourceData.metadata;
+      
+      if (metadata?.url) {
+        return metadata.url;
+      }
+      
+      if (metadata?.originalName) {
+        return `${source} (${metadata.originalName})`;
+      }
+      
+      return source;
+    };
+
+    const response = await opensearchClient.search({
+      index: 'documents',
+      body: {
+        query: {
+          multi_match: {
+            query: query,
+            fields: ['title^3', 'content^2', 'technology'],
+            type: 'best_fields',
+            fuzziness: 'AUTO'
+          }
+        },
+        _source: ['title', 'content', 'source', 'technology', 'metadata'], // Include metadata
+        size: size
+      }
+    });
+
+    const hits = response.body.hits.hits;
+    return hits.map((hit: any) => ({
+      id: hit._id,
+      title: hit._source?.title || '',
+      content: generateExcerpt(hit._source?.content || '', query), // Use excerpt instead of full content
+      source: formatSource(hit._source), // Use formatted source with URLs
+      technology: hit._source?.technology || '',
+      score: Math.min(hit._score / 10, 1)
+    }));
+  } catch (error) {
+    console.error('Error in keyword search:', error);
+    return [];
+  }
+},
 
   // Get all documents
   async getAllDocuments(): Promise<Document[]> {

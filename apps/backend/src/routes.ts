@@ -8,17 +8,19 @@ import { FileProcessor } from './services/fileProcessor';
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: 50 * 1024 * 1024, // Increased to 50MB for large documents
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes = [
       'application/pdf',
       'text/plain',
       'text/markdown',
-      'application/octet-stream'
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+      'application/msword', // .doc
+      'application/octet-stream' // Some systems send files as this
     ];
     
-    const allowedExtensions = ['.pdf', '.txt', '.md'];
+    const allowedExtensions = ['.pdf', '.txt', '.md', '.docx', '.doc'];
     const hasValidExtension = allowedExtensions.some(ext => 
       file.originalname.toLowerCase().endsWith(ext)
     );
@@ -26,7 +28,7 @@ const upload = multer({
     if (allowedTypes.includes(file.mimetype) || hasValidExtension) {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF and text files are allowed'));
+      cb(new Error('Only PDF, Word documents, and text files are allowed'));
     }
   }
 });
@@ -200,5 +202,62 @@ apiRoutes.get('/documents', async (req, res) => {
   } catch (error) {
     console.error('Error getting documents:', error);
     res.status(500).json({ error: 'Failed to get documents' });
+  }
+});
+
+// URL scraping endpoint
+apiRoutes.post('/documents/scrape', async (req: any, res: any) => {
+  try {
+    const { url, technology, source } = req.body;
+    
+    if (!url || !url.trim()) {
+      return res.status(400).json({ error: 'URL is required' });
+    }
+
+    // Validate URL format
+    try {
+      new URL(url);
+    } catch {
+      return res.status(400).json({ error: 'Invalid URL format' });
+    }
+    
+    console.log(`🌐 URL scraping request: ${url}`);
+    
+    // Process the web page
+    const processedDoc = await FileProcessor.processUrl(url.trim());
+    
+    // Create document for indexing
+    const document = {
+      id: Date.now().toString(),
+      title: processedDoc.title,
+      content: processedDoc.content,
+      source: source || url,
+      technology: technology || 'Web Documentation',
+      timestamp: new Date().toISOString(),
+      metadata: processedDoc.metadata
+    };
+
+    // Index the document
+    await opensearchService.indexDocument(document);
+    
+    res.status(201).json({
+      message: 'Web page scraped and processed successfully',
+      document: {
+        id: document.id,
+        title: document.title,
+        chunks: processedDoc.chunks.length,
+        wordCount: processedDoc.metadata.wordCount,
+        fileType: processedDoc.metadata.fileType,
+        url: url
+      }
+    });
+    
+  } catch (error) {
+    console.error('URL scraping error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    res.status(500).json({ 
+      error: 'Failed to scrape web page',
+      details: errorMessage
+    });
   }
 });

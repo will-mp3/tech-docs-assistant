@@ -236,7 +236,24 @@ export const AIAssistant: React.FC = () => {
                         {source.title}
                       </div>
                       <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                        {source.source}
+                        {/* Make source clickable if it's a URL */}
+                        {source.source.startsWith('http') ? (
+                          <a 
+                            href={source.source} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            style={{
+                              color: '#3b82f6',
+                              textDecoration: 'none'
+                            }}
+                            onMouseEnter={(e) => (e.target as HTMLAnchorElement).style.textDecoration = 'underline'}
+                            onMouseLeave={(e) => (e.target as HTMLAnchorElement).style.textDecoration = 'none'}
+                          >
+                            {source.source}
+                          </a>
+                        ) : (
+                          source.source
+                        )}
                       </div>
                     </div>
                     <div style={{
