@@ -32,10 +32,10 @@ export const AIAssistant: React.FC = () => {
   };
 
   const exampleQuestions = [
-    "How do React hooks work?",
-    "What are TypeScript best practices?",
-    "What are the main concepts I should know?",
-    "How do I get started with this technology?"
+    "Based on the ____ documentation, where should I start?",
+    "What are some common pitfalls when using ____?",
+    "What are the main concepts I should know about ____?",
+    "How do I get started with ____?"
   ];
 
   return (
