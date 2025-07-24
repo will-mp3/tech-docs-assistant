@@ -28,7 +28,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({ onResults, onLoading }) =>
   };
 
   return (
-    <div style={{ width: '100%', maxWidth: '600px', marginBottom: '2rem' }}>
+    <div style={{ width: '100%', maxWidth: '1200px', marginBottom: '2rem' }}>
       <form onSubmit={handleSearch}>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <input

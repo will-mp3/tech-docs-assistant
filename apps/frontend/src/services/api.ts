@@ -50,7 +50,6 @@ export interface NewDocument {
   technology: string;
 }
 
-// NEW: RAG Q&A interfaces
 export interface Source {
   title: string;
   source: string;
