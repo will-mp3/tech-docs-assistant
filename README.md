@@ -24,9 +24,11 @@ This project demonstrates advanced RAG (Retrieval Augmented Generation) capabili
 - Node.js API setup
 - Local development environment
 
-**Upcoming:**
+**Completed:**
 - RAG implementation with embeddings
 - Claude integration
+
+**Upcoming:**
 - AWS CDK infrastructure setup
 - Production deployment
 
