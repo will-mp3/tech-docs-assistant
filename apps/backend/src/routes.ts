@@ -46,16 +46,35 @@ apiRoutes.get('/test', (req, res) => {
 // Search endpoint
 apiRoutes.post('/search', async (req, res) => {
   try {
-    const { query } = req.body;
+    const { 
+      query, 
+      technology,     // Array of technologies to filter by
+      fileType,       // Array of file types to filter by  
+      dateRange,      // String: 'week', 'month', 'year', 'all'
+      sortBy          // String: 'relevance', 'date', 'title'
+    } = req.body;
     
     if (!query || query.trim() === '') {
       return res.status(400).json({ error: 'Query is required' });
     }
 
-    const results = await opensearchService.searchDocuments(query.trim());
+    // Build filter object
+    const filters = {
+      technology: Array.isArray(technology) ? technology : [],
+      fileType: Array.isArray(fileType) ? fileType : [],
+      dateRange: dateRange || 'all',
+      sortBy: sortBy || 'relevance'
+    };
+
+    const results = await opensearchService.searchDocumentsWithFilters(
+      query.trim(), 
+      filters,
+      10 // size
+    );
     
     res.json({
       query: query,
+      filters: filters,
       results: results,
       totalResults: results.length
     });
