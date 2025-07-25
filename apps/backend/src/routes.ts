@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import { opensearchService } from './services/opensearch';
+import { opensearchService, opensearchClient } from './services/opensearch'; // Add opensearchClient import
 import { claudeService } from './services/claude';
 import { FileProcessor } from './services/fileProcessor';
 
@@ -278,5 +278,45 @@ apiRoutes.post('/documents/scrape', async (req: any, res: any) => {
       error: 'Failed to scrape web page',
       details: errorMessage
     });
+  }
+});
+
+// Delete document endpoint
+apiRoutes.delete('/documents/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!id) {
+      return res.status(400).json({ error: 'Document ID is required' });
+    }
+
+    // Delete from OpenSearch
+    const deleteResponse = await opensearchClient.delete({
+      index: 'documents',
+      id: id
+    });
+
+    if (deleteResponse.body.result === 'deleted') {
+      console.log(`Document deleted: ${id}`);
+      res.json({
+        message: 'Document deleted successfully',
+        id: id
+      });
+    } else {
+      res.status(404).json({ error: 'Document not found' });
+    }
+    
+  } catch (error) {
+    console.error('Delete document error:', error);
+    if (error && typeof error === 'object' && 'body' in error) {
+      const opensearchError = error as any;
+      if (opensearchError.body?.error?.type === 'not_found') {
+        res.status(404).json({ error: 'Document not found' });
+      } else {
+        res.status(500).json({ error: 'Failed to delete document' });
+      }
+    } else {
+      res.status(500).json({ error: 'Failed to delete document' });
+    }
   }
 });

@@ -53,6 +53,8 @@ export interface NewDocument {
 export interface Source {
   title: string;
   source: string;
+  technology?: string;
+  content?: string;
   relevance: number;
 }
 
@@ -104,5 +106,10 @@ export const apiService = {
   scrapeUrl: async (request: ScrapeUrlRequest): Promise<{ message: string; document: any }> => {
     const response = await api.post<{ message: string; document: any }>('/documents/scrape', request);
     return response.data;
+  },
+
+  deleteDocument: async (id: string): Promise<{ message: string; id: string }> => {
+  const response = await api.delete<{ message: string; id: string }>(`/documents/${id}`);
+  return response.data;
   }
 };

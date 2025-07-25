@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { apiService, type RAGResponse } from '../services/api';
+import { ResultCard } from './SearchResults'; // Import the reusable component
 
 export const AIAssistant: React.FC = () => {
   const [question, setQuestion] = useState('');
@@ -32,11 +33,25 @@ export const AIAssistant: React.FC = () => {
   };
 
   const exampleQuestions = [
-    "Based on the ____ documentation, where should I start?",
-    "What are some common pitfalls when using ____?",
-    "What are the main concepts I should know about ____?",
-    "How do I get started with ____?"
+    "How do I choose the right database?",
+    "What are the principles of good software architecture?",
+    "How do I implement real-time features?",
+    "What are the differences between frameworks?",
+    "How do I handle data security?",
+    "What is the best deployment strategy?"
   ];
+
+  // Convert RAG sources to SearchResult format for consistent display
+  const convertSourcesToSearchResults = (ragResponse: RAGResponse) => {
+    return ragResponse.sources.map((source, index) => ({
+      id: `source-${index}`,
+      title: source.title,
+      content: source.content || `Relevant content from ${source.title}...`, // Use content or fallback
+      source: source.source,
+      technology: source.technology || 'General', // Use technology or fallback
+      score: source.relevance / 100 // Convert percentage back to decimal
+    }));
+  };
 
   return (
     <div style={{ 
@@ -89,12 +104,12 @@ export const AIAssistant: React.FC = () => {
               outline: 'none'
             }}
             onFocus={(e) => {
-              e.target.style.borderColor = '#3b82f6';
-              e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+              (e.target as HTMLTextAreaElement).style.borderColor = '#3b82f6';
+              (e.target as HTMLTextAreaElement).style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
             }}
             onBlur={(e) => {
-              e.target.style.borderColor = '#d1d5db';
-              e.target.style.boxShadow = 'none';
+              (e.target as HTMLTextAreaElement).style.borderColor = '#d1d5db';
+              (e.target as HTMLTextAreaElement).style.boxShadow = 'none';
             }}
           />
         </div>
@@ -206,7 +221,7 @@ export const AIAssistant: React.FC = () => {
             </div>
           </div>
 
-          {/* Sources */}
+          {/* Enhanced Sources Display */}
           {response.sources.length > 0 && (
             <div style={{ marginTop: '1.5rem' }}>
               <h4 style={{
@@ -217,55 +232,13 @@ export const AIAssistant: React.FC = () => {
               }}>
                 Sources ({response.totalSources}):
               </h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {response.sources.map((source, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      padding: '0.75rem',
-                      backgroundColor: 'white',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '0.25rem',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: '500', color: '#111827' }}>
-                        {source.title}
-                      </div>
-                      <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                        {/* Make source clickable if it's a URL */}
-                        {source.source.startsWith('http') ? (
-                          <a 
-                            href={source.source} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            style={{
-                              color: '#3b82f6',
-                              textDecoration: 'none'
-                            }}
-                            onMouseEnter={(e) => (e.target as HTMLAnchorElement).style.textDecoration = 'underline'}
-                            onMouseLeave={(e) => (e.target as HTMLAnchorElement).style.textDecoration = 'none'}
-                          >
-                            {source.source}
-                          </a>
-                        ) : (
-                          source.source
-                        )}
-                      </div>
-                    </div>
-                    <div style={{
-                      fontSize: '0.875rem',
-                      color: '#059669',
-                      backgroundColor: '#d1fae5',
-                      padding: '0.25rem 0.5rem',
-                      borderRadius: '0.25rem'
-                    }}>
-                      {source.relevance}% match
-                    </div>
-                  </div>
+              <div>
+                {convertSourcesToSearchResults(response).map((result) => (
+                  <ResultCard 
+                    key={result.id} 
+                    result={result} 
+                    showRelevanceScore={true}
+                  />
                 ))}
               </div>
             </div>

@@ -4,6 +4,7 @@ import { SearchResults } from './components/SearchResults';
 import { DocumentUpload } from './components/DocumentUpload';
 import { AIAssistant } from './components/AIAssistant';
 import { apiService, type SearchResult } from './services/api';
+import { DocumentManager } from './components/DocumentManager';
 import './App.css';
 
 function App() {
@@ -87,14 +88,7 @@ function App() {
           <DocumentUpload onDocumentAdded={handleDocumentAdded} />
           
           <AIAssistant />
-          
-          <div style={{
-            width: '100%',
-            height: '1px',
-            backgroundColor: '#e5e7eb',
-            margin: '1rem 0'
-          }}></div>
-          
+              
           <div style={{ width: '100%', maxWidth: '800px' }}>
             <h3 style={{
               fontSize: '1.25rem',
@@ -116,6 +110,15 @@ function App() {
               loading={loading} 
             />
           </div>
+
+          <div style={{
+            width: '100%',
+            height: '1px',
+            backgroundColor: '#e5e7eb',
+            margin: '1rem 0'
+          }}></div>
+
+          <DocumentManager />
         </main>
       </div>
     </div>
