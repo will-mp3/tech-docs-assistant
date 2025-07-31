@@ -1,6 +1,8 @@
 import * as cdk from 'aws-cdk-lib';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as opensearch from 'aws-cdk-lib/aws-opensearchserverless';
+import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
@@ -8,6 +10,8 @@ export class TechDocsSimpleStack extends cdk.Stack {
   public readonly documentsBucket: s3.Bucket;
   public readonly documentsTable: dynamodb.Table;
   public readonly usersTable: dynamodb.Table;
+  public readonly searchCollection: opensearch.CfnCollection;
+  public readonly api: apigateway.RestApi;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -40,7 +44,7 @@ export class TechDocsSimpleStack extends cdk.Stack {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
     });
 
-    // DynamoDB Tables
+    // DynamoDB Tables - Create BOTH tables first
     this.documentsTable = new dynamodb.Table(this, 'DocumentsTable', {
       tableName: 'tech-docs-documents',
       partitionKey: { 
@@ -56,6 +60,7 @@ export class TechDocsSimpleStack extends cdk.Stack {
       pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: false },
     });
 
+    // Add Global Secondary Index
     this.documentsTable.addGlobalSecondaryIndex({
       indexName: 'DocumentIdIndex',
       partitionKey: {
@@ -64,6 +69,7 @@ export class TechDocsSimpleStack extends cdk.Stack {
       },
     });
 
+    // Users table
     this.usersTable = new dynamodb.Table(this, 'UsersTable', {
       tableName: 'tech-docs-users',
       partitionKey: { 
@@ -75,7 +81,49 @@ export class TechDocsSimpleStack extends cdk.Stack {
       pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: false },
     });
 
-    // IAM role for Lambda functions
+    // OpenSearch Serverless Collection for search
+    // Create security policies first
+    const encryptionPolicy = new opensearch.CfnSecurityPolicy(this, 'EncryptionPolicy', {
+      name: 'tech-docs-encryption-policy',
+      type: 'encryption',
+      policy: JSON.stringify({
+        Rules: [
+          {
+            ResourceType: 'collection',
+            Resource: ['collection/tech-docs-search']
+          }
+        ],
+        AWSOwnedKey: true
+      })
+    });
+
+    const networkPolicy = new opensearch.CfnSecurityPolicy(this, 'NetworkPolicy', {
+      name: 'tech-docs-network-policy',
+      type: 'network',
+      policy: JSON.stringify([
+        {
+          Rules: [
+            {
+              ResourceType: 'collection',
+              Resource: ['collection/tech-docs-search']
+            }
+          ],
+          AllowFromPublic: true
+        }
+      ])
+    });
+
+    // Create the OpenSearch Serverless collection
+    this.searchCollection = new opensearch.CfnCollection(this, 'SearchCollection', {
+      name: 'tech-docs-search',
+      type: 'SEARCH',
+      description: 'Search collection for tech docs assistant',
+    });
+
+    this.searchCollection.addDependency(encryptionPolicy);
+    this.searchCollection.addDependency(networkPolicy);
+
+    // IAM role for Lambda functions - Create AFTER all resources it references
     const lambdaRole = new iam.Role(this, 'LambdaExecutionRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
       managedPolicies: [
@@ -119,6 +167,63 @@ export class TechDocsSimpleStack extends cdk.Stack {
             }),
           ],
         }),
+        OpenSearchAccess: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: [
+                'aoss:*', // OpenSearch Serverless permissions
+              ],
+              resources: [this.searchCollection.attrArn],
+            }),
+          ],
+        }),
+      },
+    });
+
+    // Data access policy for OpenSearch (allows Lambda role to access)
+    new opensearch.CfnAccessPolicy(this, 'DataAccessPolicy', {
+      name: 'tech-docs-data-access-policy',
+      type: 'data',
+      policy: JSON.stringify([
+        {
+          Rules: [
+            {
+              ResourceType: 'collection',
+              Resource: ['collection/tech-docs-search'],
+              Permission: [
+                'aoss:CreateCollectionItems',
+                'aoss:DeleteCollectionItems',
+                'aoss:UpdateCollectionItems',
+                'aoss:DescribeCollectionItems'
+              ]
+            },
+            {
+              ResourceType: 'index',
+              Resource: ['index/tech-docs-search/*'],
+              Permission: [
+                'aoss:CreateIndex',
+                'aoss:DeleteIndex',
+                'aoss:UpdateIndex',
+                'aoss:DescribeIndex',
+                'aoss:ReadDocument',
+                'aoss:WriteDocument'
+              ]
+            }
+          ],
+          Principal: [lambdaRole.roleArn]
+        }
+      ])
+    });
+
+    // API Gateway for Lambda functions
+    this.api = new apigateway.RestApi(this, 'TechDocsApi', {
+      restApiName: 'Tech Docs Assistant API',
+      description: 'API for tech docs assistant RAG application',
+      defaultCorsPreflightOptions: {
+        allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        allowMethods: apigateway.Cors.ALL_METHODS,
+        allowHeaders: ['Content-Type', 'X-Amz-Date', 'Authorization', 'X-Api-Key'],
       },
     });
 
@@ -146,6 +251,16 @@ export class TechDocsSimpleStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'LambdaRoleArn', {
       value: lambdaRole.roleArn,
       description: 'IAM role for Lambda functions',
+    });
+
+    new cdk.CfnOutput(this, 'SearchCollectionEndpoint', {
+      value: this.searchCollection.attrCollectionEndpoint,
+      description: 'OpenSearch Serverless collection endpoint',
+    });
+
+    new cdk.CfnOutput(this, 'ApiGatewayUrl', {
+      value: this.api.url,
+      description: 'API Gateway endpoint URL',
     });
   }
 }

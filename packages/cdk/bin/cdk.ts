@@ -11,7 +11,7 @@ new TechDocsSimpleStack(app, 'TechDocsStack', {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: process.env.CDK_DEFAULT_REGION,
   },
-  description: 'Tech Docs Assistant - Simplified deployment (S3 + DynamoDB)',
+  description: 'Tech Docs Assistant - Enhanced deployment (S3 + DynamoDB + OpenSearch + API Gateway)',
 });
 
 cdk.Tags.of(app).add('Project', 'TechDocsAssistant');
