@@ -81,8 +81,9 @@ export class TechDocsSimpleStack extends cdk.Stack {
       pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: false },
     });
 
-    // OpenSearch Serverless Collection for search
-    // Create security policies first
+    // OpenSearch Serverless Collection - TEMPORARILY REMOVED DUE TO HIGH COSTS
+    // Minimum $17+/day even when unused - not suitable for demo
+    /*
     const encryptionPolicy = new opensearch.CfnSecurityPolicy(this, 'EncryptionPolicy', {
       name: 'tech-docs-encryption-policy',
       type: 'encryption',
@@ -113,7 +114,6 @@ export class TechDocsSimpleStack extends cdk.Stack {
       ])
     });
 
-    // Create the OpenSearch Serverless collection
     this.searchCollection = new opensearch.CfnCollection(this, 'SearchCollection', {
       name: 'tech-docs-search',
       type: 'SEARCH',
@@ -122,6 +122,7 @@ export class TechDocsSimpleStack extends cdk.Stack {
 
     this.searchCollection.addDependency(encryptionPolicy);
     this.searchCollection.addDependency(networkPolicy);
+    */
 
     // IAM role for Lambda functions - Create AFTER all resources it references
     const lambdaRole = new iam.Role(this, 'LambdaExecutionRole', {
@@ -167,6 +168,8 @@ export class TechDocsSimpleStack extends cdk.Stack {
             }),
           ],
         }),
+        // OpenSearch access removed - will use alternative search solution
+        /*
         OpenSearchAccess: new iam.PolicyDocument({
           statements: [
             new iam.PolicyStatement({
@@ -178,10 +181,12 @@ export class TechDocsSimpleStack extends cdk.Stack {
             }),
           ],
         }),
+        */
       },
     });
 
-    // Data access policy for OpenSearch (allows Lambda role to access)
+    // Data access policy removed with OpenSearch
+    /*
     new opensearch.CfnAccessPolicy(this, 'DataAccessPolicy', {
       name: 'tech-docs-data-access-policy',
       type: 'data',
@@ -215,6 +220,7 @@ export class TechDocsSimpleStack extends cdk.Stack {
         }
       ])
     });
+    */
 
     // API Gateway for Lambda functions
     this.api = new apigateway.RestApi(this, 'TechDocsApi', {
@@ -253,10 +259,13 @@ export class TechDocsSimpleStack extends cdk.Stack {
       description: 'IAM role for Lambda functions',
     });
 
+    // OpenSearch output removed
+    /*
     new cdk.CfnOutput(this, 'SearchCollectionEndpoint', {
       value: this.searchCollection.attrCollectionEndpoint,
       description: 'OpenSearch Serverless collection endpoint',
     });
+    */
 
     new cdk.CfnOutput(this, 'ApiGatewayUrl', {
       value: this.api.url,
